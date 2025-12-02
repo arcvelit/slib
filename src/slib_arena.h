@@ -2,7 +2,7 @@
 #define _SLIB_ARENA_C
 
 /**
- * Arena.h provides a general purpose pool allocator
+ * slib_arena.h provides a general purpose pool allocator
  * 
  * Upon initializing, the arena allocates a page
  * 
