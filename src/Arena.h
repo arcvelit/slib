@@ -113,7 +113,6 @@ STRUCTLIBDEF void arena_deinit(Arena* const arena) {
     Arena_Page* page = arena->head;
     while (page) {
         Arena_Page* next = page->next;
-        printf("DEINIT\n");
         ARENA_DEALLOCATOR(page);
         page = next;
     }
