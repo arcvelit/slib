@@ -42,6 +42,10 @@
     #define ARENA_ALLOCATOR malloc
 #endif // ARENA_ALLOCATOR
 
+#ifndef ARENA_DEALLOCATOR 
+    #define ARENA_DEALLOCATOR free
+#endif // ARENA_ALLOCATOR
+
 typedef struct Arena_Page Arena_Page;
 struct Arena_Page {
     uint8_t data[GLOBAL_ARENA_PAGE_CAP];
@@ -58,10 +62,13 @@ typedef struct {
 STRUCTLIBDEF void arena_init(Arena* const arena, const size_t page_cap);
 STRUCTLIBDEF uint8_t* arena_alloc(Arena* const arena, size_t count);
 STRUCTLIBDEF void arena_reset(Arena* const arena);
+STRUCTLIBDEF void arena_free(Arena* const arena);
+STRUCTLIBDEF size_t arena_page_count(const Arena* const arena);
 
 #ifdef SLIB_ARENA_IMPLEMENTATION
 
 STRUCTLIBDEF void arena_init(Arena* const arena, const size_t page_cap) {
+    if (!arena) return;
     arena->head       = (Arena_Page*)ARENA_ALLOCATOR(sizeof(Arena_Page));
     arena->head->next = 0;
     arena->current    = arena->head;
@@ -70,6 +77,7 @@ STRUCTLIBDEF void arena_init(Arena* const arena, const size_t page_cap) {
 }
 
 STRUCTLIBDEF uint8_t* arena_alloc(Arena* const arena, size_t count) {
+    if (!arena) return 0;
     const size_t page_size = arena->cursor - arena->current->data;
     if (page_size + count > arena->page_cap) {
         if (count > arena->page_cap) {
@@ -95,8 +103,32 @@ STRUCTLIBDEF uint8_t* arena_alloc(Arena* const arena, size_t count) {
 }
 
 STRUCTLIBDEF void arena_reset(Arena* const arena) {
+    if (!arena) return;
     arena->current =  arena->head;
     arena->cursor  = &arena->head->data[0];
+}
+
+STRUCTLIBDEF void arena_deinit(Arena* const arena) {
+    if (!arena) return;
+    Arena_Page* page = arena->head;
+    while (page) {
+        Arena_Page* next = page->next;
+        printf("DEINIT\n");
+        ARENA_DEALLOCATOR(page);
+        page = next;
+    }
+    arena->head    = 0;
+    arena->cursor  = 0;
+    arena->current = 0;
+}
+
+STRUCTLIBDEF size_t arena_page_count(const Arena* const arena) {
+    if (!arena) return 0;
+    size_t count = 0;
+    for (Arena_Page* p = arena->head; p; p = p->next) {
+        count++;
+    }
+    return count;
 }
 
 #endif // SLIB_ARENA_IMPLEMENTATION
