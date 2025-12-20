@@ -13,15 +13,15 @@
 
 #include <stdint.h>
 #include <string.h>
-#if MATRIX_ASSERTS
+#if SLIB_MATRIX_INDEX 
     #include <assert.h>
-#endif // ASSERT_MATRIX_MULT
+#endif // SLIB_ASSERT_MATRIX_MULT
 
 #ifndef STRUCTLIBDEF
     #define STRUCTLIBDEF
 #endif
 
-#define Matrix_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
+#define MATRIX_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
 
 typedef struct {
     float*   data;
@@ -48,16 +48,16 @@ STRUCTLIBDEF void matrix_copy(Matrix* const dst, const Matrix* const src) {
 }
 
 STRUCTLIBDEF void matrix_mult(Matrix* const src, const Matrix* const mat1, const Matrix* const mat2) {
-    #ifdef ASSERT_MATRIX_MULT
+    #ifdef SLIB_ASSERT_MATRIX_MULT
     assert(mat1->cols == mat2->rows && "matrix size mismatch");
     #endif
     for (uint32_t i = 0; i < mat1->rows; i++) {
         for (uint32_t j = 0; j < mat2->cols; j++) {
             float acc = 0;
             for (uint32_t k = 0; k < mat2->rows; k++) {
-                acc += Matrix_INDEX(mat1, i, k) * Matrix_INDEX(mat2, k, j);
+                acc += MATRIX_INDEX (mat1, i, k) * MATRIX_INDEX (mat2, k, j);
             }
-            Matrix_INDEX(src, i, j) = acc;
+            MATRIX_INDEX (src, i, j) = acc;
         }
     }
 }
