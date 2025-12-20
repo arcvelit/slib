@@ -39,6 +39,9 @@ typedef struct {
     size_t size;
 } Arena;
 
+// Index arithmetics for arena
+#define arena_incr(_T, _index, _incr) ((_index)+(_incr)*sizeof(_T))
+
 // Translates index to pointer
 #define arena_get(_T, _a, _index) ((_T*)((_a).data+(_index)))
 
