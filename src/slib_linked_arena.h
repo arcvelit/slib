@@ -22,11 +22,14 @@
  * 
  * LinkedArena.current: [ Page 1 ] -> ...
  * |___ .head:    [ Page 1 ] -> [ Page 2 ] -> null
+ * 
+ * 
+ * Tradeoff: if the required memory block is too large, it will jump to the next 
+ * page, essential wasting space in the original page (not really "full").
  *
  * */
 
 #include <stdint.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
@@ -50,41 +53,39 @@
 typedef struct LinkedArenaPage LinkedArenaPage;
 struct LinkedArenaPage {
     uint8_t data[LINKED_ARENA_PAGE_CAP];
-    LinkedArenaPage*  next;
+    LinkedArenaPage* next;
 };
 
 typedef struct {
     LinkedArenaPage* head;
     LinkedArenaPage* current;
     uint8_t* cursor;
-    size_t page_cap;
 } LinkedArena;
 
-STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena, const size_t page_cap);
+STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena);
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count);
 STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena);
-STRUCTLIBDEF void linked_arena_free(LinkedArena* const arena);
+STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);
 
 #ifdef SLIB_LINKED_ARENA_IMPL
 
-STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena, const size_t page_cap) {
+STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena) {
     arena->head       = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
     arena->head->next = 0;
     arena->current    = arena->head;
     arena->cursor     = &arena->head->data[0];
-    arena->page_cap   = page_cap;
 }
 
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count) {
-    assert(arena->page_cap >= count && "page size is to small");
+    assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
     const size_t page_size = arena->cursor - arena->current->data;
-    if (page_size + count > arena->page_cap) {
+    if (page_size + count > arena->LINKED_ARENA_PAGE_CAP) {
         if (!arena->current->next) {
             LinkedArenaPage* const page =
             LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
             if (!page) {
-                fprintf(stderr, __FILE__": failed to allocate arena page\n");
+                fprintf(stderr, __FILE__": failed to grow arena\n");
                 return 0;
             }
             page->next = 0;
