@@ -13,13 +13,14 @@
 
 #include <stdint.h>
 #include <string.h>
-#if SLIB_MATRIX_INDEX 
-    #include <assert.h>
-#endif // SLIB_ASSERT_MATRIX_MULT
 
 #ifndef STRUCTLIBDEF
     #define STRUCTLIBDEF
 #endif
+
+#if SLIB_ASSERT_MATRIX_MULT 
+    #include <assert.h> // hidden directive for speed
+#endif // SLIB_ASSERT_MATRIX_MULT
 
 #define MATRIX_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
 
