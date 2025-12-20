@@ -10,7 +10,7 @@
  * linked_arena_init(&a, 1024);
  * 
  * LinkedArena.current: [ Page 1 ] -> null
- * |____.head:      null
+ * |____.head:    [ Page 1 ] -> null
  * 
  * When a page reaches full capacity or is too full to allocate
  * it allocates a new page and adds it to the linked list
