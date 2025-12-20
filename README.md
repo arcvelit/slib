@@ -1,2 +1,2 @@
-# cstructs
-C Data Structures that I reimplement too many times.
+# slib
+A library of C data structures that I reimplement too many times.
