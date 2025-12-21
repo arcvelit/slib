@@ -64,6 +64,7 @@ typedef struct {
 
 STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena);
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count);
+STRUCTLIBDEF void* linked_arena_alloc_ff(LinkedArena* const arena, size_t count);
 STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena);
 STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);

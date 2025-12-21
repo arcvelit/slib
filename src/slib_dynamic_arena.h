@@ -1,5 +1,5 @@
-#ifndef _SLIB_ARENA_C
-#define _SLIB_ARENA_C
+#ifndef _SLIB_DYNAMIC_ARENA_C
+#define _SLIB_DYNAMIC_ARENA_C
 
 /**
  * slib_dynamic_arena.h provides a dynamic arena
@@ -55,7 +55,7 @@ STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count)
 STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena);
 STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena);
 
-#ifdef SLIB_ARENA_IMPL
+#ifdef SLIB_DYNAMIC_ARENA_IMPL
 
 STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity) {
     arena->data     = (uint8_t*)ARENA_ALLOC(capacity); // gcc complaining
@@ -92,6 +92,6 @@ STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena) {
     arena->size     = 0;
 }
 
-#endif // SLIB_ARENA_IMPL
+#endif // SLIB_DYNAMIC_ARENA_IMPL
 
-#endif // _SLIB_ARENA_C
+#endif // _SLIB_DYNAMIC_ARENA_C
