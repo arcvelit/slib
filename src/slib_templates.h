@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 // Neat trick #1: starting a comment at the end of a directive 
 // allows to add semicolons without the compiler complaining!
@@ -40,6 +41,7 @@ typedef struct {\
  * \ allows emplace for big structs
  * 
  * append()  -> add elements
+ * append_many() -> copies second list to the back of first list
  * 
  * free()    -> free memory and sanitize
  * 
@@ -102,6 +104,15 @@ STRUCTLIBDEF int _StructName##_append(_StructName* const __struct, const _T __e)
     }\
     __struct->data[__struct->size++] = __e;\
     return 1;\
+}\
+STRUCTLIBDEF int _StructName##_append_many(_StructName* const __dest, _StructName* const __src) {\
+    const size_t new_size = __dest->size + __src->size;\
+    if (_StructName##_reserve(__dest, new_size)) {\
+        memcpy(__dest->data + __dest->size, __src->data, __src->size * sizeof(_T));\
+        __dest->size = new_size;\
+        return 1;\
+    }\
+    return 0;\
 }\
 STRUCTLIBDEF void _StructName##_free(_StructName* const __struct) {\
     free(__struct->data);\
