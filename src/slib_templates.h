@@ -63,7 +63,7 @@ static inline _T* _StructName##_grow(_StructName* const __struct, size_t __amoun
         if (new_cap) {\
             do new_cap *= 2; while (new_cap < required);\
         } else { new_cap = required; }\
-        _T* new_data = realloc(__struct->data, new_cap * sizeof(_T));\
+        _T* const new_data = realloc(__struct->data, new_cap * sizeof(_T));\
         if (!new_data) return 0;\
         __struct->data = new_data;\
         __struct->cap  = new_cap;\
@@ -75,7 +75,7 @@ static inline _T* _StructName##_grow(_StructName* const __struct, size_t __amoun
 static inline int _StructName##_append(_StructName* const __struct, const _T __e) {\
     if (__struct->size == __struct->cap) {\
         const size_t new_cap = __struct->cap ? __struct->cap * 2 : SLIB_DA_INITIAL_CAP;\
-        _T* new_data = realloc(__struct->data, new_cap * sizeof(_T));\
+        _T* const new_data = realloc(__struct->data, new_cap * sizeof(_T));\
         if (!new_data) return 0;\
         __struct->data = new_data;\
         __struct->cap  = new_cap;\
