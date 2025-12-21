@@ -35,19 +35,19 @@
 #include <stdio.h>
 
 #ifndef STRUCTLIBDEF
-    #define STRUCTLIBDEF
+# define STRUCTLIBDEF
 #endif
 
 #ifndef LINKED_ARENA_PAGE_CAP
-    #define LINKED_ARENA_PAGE_CAP 1024
+# define LINKED_ARENA_PAGE_CAP 1024
 #endif // LINKED_ARENA_PAGE_CAP
 
 #ifndef LINKED_ARENA_ALLOC 
-    #define LINKED_ARENA_ALLOC malloc
+# define LINKED_ARENA_ALLOC malloc
 #endif // LINKED_ARENA_ALLOC
 
 #ifndef LINKED_ARENA_DEALLOC 
-    #define LINKED_ARENA_DEALLOC free
+# define LINKED_ARENA_DEALLOC free
 #endif // LINKED_ARENA_ALLOC
 
 typedef struct LinkedArenaPage LinkedArenaPage;
@@ -80,7 +80,7 @@ STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena) {
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count) {
     assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
     const size_t page_size = arena->cursor - arena->current->data;
-    if (page_size + count > arena->LINKED_ARENA_PAGE_CAP) {
+    if (page_size + count > LINKED_ARENA_PAGE_CAP) {
         if (!arena->current->next) {
             LinkedArenaPage* const page =
             LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));

@@ -20,19 +20,19 @@
 #include <stdio.h>
 
 #ifndef STRUCTLIBDEF
-    #define STRUCTLIBDEF
+# define STRUCTLIBDEF
 #endif
 
 #ifndef ARENA_ALLOC 
-    #define ARENA_ALLOC malloc
+# define ARENA_ALLOC malloc
 #endif // ARENA_ALLOC
 
 #ifndef ARENA_DEALLOC 
-    #define ARENA_DEALLOC free
+# define ARENA_DEALLOC free
 #endif // ARENA_ALLOC
 
 #ifndef ARENA_REALLOC
-    #define ARENA_REALLOC realloc
+# define ARENA_REALLOC realloc
 #endif // ARENA_REALLOC
 
 typedef struct {

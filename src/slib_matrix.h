@@ -15,11 +15,11 @@
 #include <string.h>
 
 #ifndef STRUCTLIBDEF
-    #define STRUCTLIBDEF
+# define STRUCTLIBDEF
 #endif
 
 #if SLIB_ASSERT_MATRIX_MULT 
-    #include <assert.h> // hidden directive for speed
+# include <assert.h> // hidden directive for speed
 #endif // SLIB_ASSERT_MATRIX_MULT
 
 #define MATRIX_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
