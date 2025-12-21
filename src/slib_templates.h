@@ -40,14 +40,29 @@ typedef struct {\
  * free    method -> free memory and sanitize 
  */
 
-#define SLIB_DA_INITIAL_CAP 4
+#ifndef STRUCTLIBDEF
+# define STRUCTLIBDEF
+#endif // STRUCTLIBDEF
+
+#ifndef SLIB_DA_INITIAL_CAP
+# define SLIB_DA_INITIAL_CAP 4
+#endif // SLIB_DA_INITIAL_CAP
+
+// Declaration of DA
 #define SLIB_DA(_StructName, _T)\
 typedef struct {\
     _T*     data;\
     size_t  size;\
     size_t  cap;\
 } _StructName;\
-static inline int _StructName##_reserve(_StructName* const __struct, size_t __amount) {\
+STRUCTLIBDEF int _StructName##_reserve(_StructName* const __struct, size_t __amount);\
+STRUCTLIBDEF _T* _StructName##_grow(_StructName* const __struct, size_t __amount);\
+STRUCTLIBDEF int _StructName##_append(_StructName* const __struct, const _T __e);\
+//
+
+// Implementation of DA
+#define SLIB_DA_IMPLEMENT(_StructName, _T)\
+STRUCTLIBDEF int _StructName##_reserve(_StructName* const __struct, size_t __amount) {\
     if (__struct->cap < __amount) {\
         _T* const new_data = realloc(__struct->data, __amount * sizeof(_T));\
         if (!new_data) return 0;\
@@ -56,7 +71,7 @@ static inline int _StructName##_reserve(_StructName* const __struct, size_t __am
     }\
     return 1;\
 }\
-static inline _T* _StructName##_grow(_StructName* const __struct, size_t __amount) {\
+STRUCTLIBDEF _T* _StructName##_grow(_StructName* const __struct, size_t __amount) {\
     const size_t required = __struct->size + __amount;\
     if (required > __struct->cap) {\
         size_t new_cap = __struct->cap;\
@@ -72,7 +87,7 @@ static inline _T* _StructName##_grow(_StructName* const __struct, size_t __amoun
     __struct->size += __amount;\
     return ret;\
 }\
-static inline int _StructName##_append(_StructName* const __struct, const _T __e) {\
+STRUCTLIBDEF int _StructName##_append(_StructName* const __struct, const _T __e) {\
     if (__struct->size == __struct->cap) {\
         const size_t new_cap = __struct->cap ? __struct->cap * 2 : SLIB_DA_INITIAL_CAP;\
         _T* const new_data = realloc(__struct->data, new_cap * sizeof(_T));\
@@ -83,12 +98,13 @@ static inline int _StructName##_append(_StructName* const __struct, const _T __e
     __struct->data[__struct->size++] = __e;\
     return 1;\
 }\
-static inline void _StructName##_free(_StructName* const __struct) {\
+STRUCTLIBDEF void _StructName##_free(_StructName* const __struct) {\
     free(__struct->data);\
     __struct->data = 0;\
     __struct->size = 0;\
     __struct->cap  = 0;\
-}//
+}\
+//
 
 
 
