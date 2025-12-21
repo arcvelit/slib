@@ -25,19 +25,24 @@ typedef struct {\
 /**
  * Template for dynamic arrays
  * 
- * declare it global scope like this
+ * generate it like this
  * SLIB_DA(Integers, int);
- * provides: .data, .size, .cap
+ * 
+ * implement it like this
+ * SLIB_DA_IMPLEMENT(Integers, int);
+ * 
+ * Do be careful, redefine errors will be nasty
  * ___
  * 
- * reserve method -> like in C++
+ * reserve() -> like in C++
  * 
- * grow    method -> returns pointer to appended block
- * # allows emplace for big structs #
+ * grow()    -> returns pointer to appended block
+ * \ allows emplace for big structs
  * 
- * append  method -> add elements
+ * append()  -> add elements
  * 
- * free    method -> free memory and sanitize 
+ * free()    -> free memory and sanitize
+ * 
  */
 
 #ifndef STRUCTLIBDEF
@@ -103,9 +108,6 @@ STRUCTLIBDEF void _StructName##_free(_StructName* const __struct) {\
     __struct->data = 0;\
     __struct->size = 0;\
     __struct->cap  = 0;\
-}\
-//
-
-
+}//
 
 #endif // _SLIB_TEMPLATES_C
