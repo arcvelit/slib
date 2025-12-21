@@ -65,6 +65,8 @@ typedef struct {\
 STRUCTLIBDEF int _StructName##_reserve(_StructName* const __struct, size_t __amount);\
 STRUCTLIBDEF _T* _StructName##_grow(_StructName* const __struct, size_t __amount);\
 STRUCTLIBDEF int _StructName##_append(_StructName* const __struct, const _T __e);\
+STRUCTLIBDEF int _StructName##_append_many(_StructName* const __dest, const _StructName* const __src);\
+STRUCTLIBDEF void _StructName##_free(_StructName* const __struct);\
 //
 
 // Implementation of DA
@@ -105,7 +107,7 @@ STRUCTLIBDEF int _StructName##_append(_StructName* const __struct, const _T __e)
     __struct->data[__struct->size++] = __e;\
     return 1;\
 }\
-STRUCTLIBDEF int _StructName##_append_many(_StructName* const __dest, _StructName* const __src) {\
+STRUCTLIBDEF int _StructName##_append_many(_StructName* const __dest, const _StructName* const __src) {\
     const size_t new_size = __dest->size + __src->size;\
     if (_StructName##_reserve(__dest, new_size)) {\
         memcpy(__dest->data + __dest->size, __src->data, __src->size * sizeof(_T));\
