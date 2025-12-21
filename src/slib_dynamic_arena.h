@@ -2,14 +2,16 @@
 #define _SLIB_ARENA_C
 
 /**
- * slib_arena.h provides a dynamic arena
+ * slib_dynamic_arena.h provides a dynamic arena
  * 
- * The Arena object is basically a dynamic array that grows
+ * The DynamicArena object is basically a dynamic array that grows
  * when more space is required. Allocations return an index
- * in the Arena to avoid use-after-free situations.
+ * in the DynamicArena to avoid use-after-free situations.
  * 
- * If the Arena fails to grow, it remains as is and the
+ * If the DynamicArena fails to grow, it remains as is and the
  * returned index is SIZE_MAX.
+ * 
+ * This is probably super useless.
  * 
  */
 
@@ -37,7 +39,7 @@ typedef struct {
     uint8_t* data;
     size_t capacity;
     size_t size;
-} Arena;
+} DynamicArena;
 
 // Index arithmetics for arena
 #define arena_incr(_T, _index, _incr) ((_index)+(_incr)*sizeof(_T))
@@ -48,20 +50,20 @@ typedef struct {
 // Translates index to pointer with offset index (i.e. for arrays)
 #define arena_offset(_T, _a, _index, _off) arena_get(_T, _a, _index + (_off)*sizeof(_T))
 
-STRUCTLIBDEF void arena_init(Arena* const arena, const size_t capacity);
-STRUCTLIBDEF size_t arena_alloc(Arena* const arena, size_t count);
-STRUCTLIBDEF void arena_reset(Arena* const arena);
-STRUCTLIBDEF void arena_deinit(Arena* const arena);
+STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity);
+STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count);
+STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena);
+STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena);
 
 #ifdef SLIB_ARENA_IMPL
 
-STRUCTLIBDEF void arena_init(Arena* const arena, const size_t capacity) {
+STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity) {
     arena->data     = (uint8_t*)ARENA_ALLOC(capacity); // gcc complaining
     arena->capacity = capacity;
     arena->size     = 0;
 }
 
-STRUCTLIBDEF size_t arena_alloc(Arena* const arena, size_t count) {
+STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count) {
     const size_t required = arena->size + count; 
     if (required > arena->capacity) {
         size_t cap = arena->capacity;
@@ -79,11 +81,11 @@ STRUCTLIBDEF size_t arena_alloc(Arena* const arena, size_t count) {
     return ret_index;
 }
 
-STRUCTLIBDEF void arena_reset(Arena* const arena) {
+STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena) {
     arena->size = 0; // super easy!
 }
 
-STRUCTLIBDEF void arena_deinit(Arena* const arena) {
+STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena) {
     ARENA_DEALLOC(arena->data);
     arena->data     = 0;
     arena->capacity = 0;
