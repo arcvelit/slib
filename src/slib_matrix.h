@@ -28,27 +28,34 @@ typedef struct {
     float*   data;
     uint32_t rows;
     uint32_t cols;
-} Matrix;
+} SLIBMatrix;
 
-STRUCTLIBDEF Matrix matrix_make(float* const data, const uint32_t rows, const uint32_t cols);
-STRUCTLIBDEF void matrix_copy(Matrix* dst, const Matrix* src);
-STRUCTLIBDEF void matrix_mult(Matrix* src, const Matrix* mat1, const Matrix* mat2);
+STRUCTLIBDEF SLIBMatrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols);
+STRUCTLIBDEF void slib_matrix_copy(SLIBMatrix* dst, const SLIBMatrix* src);
+STRUCTLIBDEF void slib_matrix_mult(SLIBMatrix* src, const SLIBMatrix* mat1, const SLIBMatrix* mat2);
+
+#ifdef SLIB_STRIP_PREFIXES
+typedef  SLIBMatrix  Matrix;
+# define matrix_make slib_matrix_make
+# define matrix_copy slib_matrix_copy
+# define matrix_mult slib_matrix_mult
+#endif // SLIB_STRIP_PREFIXES
 
 #ifdef SLIB_MATRIX_IMPLEMENTATION
 
-STRUCTLIBDEF Matrix matrix_make(float* const data, const uint32_t rows, const uint32_t cols) {
-    return (Matrix){
+STRUCTLIBDEF SLIBMatrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols) {
+    return (SLIBMatrix) {
         .data = data,
         .rows = rows,
         .cols = cols
     };
 }
 
-STRUCTLIBDEF void matrix_copy(Matrix* const dst, const Matrix* const src) {
+STRUCTLIBDEF void slib_matrix_copy(SLIBMatrix* const dst, const SLIBMatrix* const src) {
     memcpy(dst->data, src->data, src->rows * src->cols * sizeof(float));
 }
 
-STRUCTLIBDEF void matrix_mult(Matrix* const src, const Matrix* const mat1, const Matrix* const mat2) {
+STRUCTLIBDEF void slib_matrix_mult(SLIBMatrix* const src, const SLIBMatrix* const mat1, const SLIBMatrix* const mat2) {
     #ifdef SLIB_ASSERT_MATRIX_MULT
     assert(mat1->cols == mat2->rows && "matrix size mismatch");
     #endif

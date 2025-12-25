@@ -1,20 +1,20 @@
-#ifndef _SLIB_LINKED_ARENA_C
-#define _SLIB_LINKED_ARENA_C
+#ifndef _SLIB_SLIB_LINKED_ARENA_C
+#define _SLIB_SLIB_LINKED_ARENA_C
 
 /**
  * slib_linked_arena.h provides a general purpose pool allocator
  * 
  * Start with
- * LinkedArena a = {0};
- * linked_arena_init(&a);
+ * SLIBLinkedArena a = {0};
+ * slib_linked_arena_init(&a);
  * 
  * Allocate with 
- * linked_arena_alloc       -> implements first-fit
- * linked_arena_alloc_tail  -> implements next-fit
+ * malloc       -> implements first-fit
+ * malloc_tail  -> implements next-fit
  * 
  * Free memory or reset with
- * linked_arena_deinit
- * linked_arena_reset
+ * slib_linked_arena_deinit
+ * slib_linked_arena_reset
  * 
  * */
 
@@ -27,57 +27,59 @@
 # define STRUCTLIBDEF
 #endif // STRUCTLIBDEF
 
-#ifndef LINKED_ARENA_PAGE_CAP
-# define LINKED_ARENA_PAGE_CAP 1024
-#endif // LINKED_ARENA_PAGE_CAP
+#ifndef SLIB_LINKED_ARENA_PAGE_CAP
+# define SLIB_LINKED_ARENA_PAGE_CAP 1024
+#endif // SLIB_LINKED_ARENA_PAGE_CAP
 
-#ifndef LINKED_ARENA_ALLOC 
-# define LINKED_ARENA_ALLOC malloc
-#endif // LINKED_ARENA_ALLOC
-
-#ifndef LINKED_ARENA_DEALLOC 
-# define LINKED_ARENA_DEALLOC free
-#endif // LINKED_ARENA_ALLOC
-
-typedef struct LinkedArenaPage LinkedArenaPage;
+typedef struct SLIBLinkedArenaPage SLIBLinkedArenaPage;
 
 typedef struct {
-    LinkedArenaPage* head;
-    LinkedArenaPage* current;
-} LinkedArena;
+    SLIBLinkedArenaPage* head;
+    SLIBLinkedArenaPage* current;
+} SLIBLinkedArena;
 
 // Initialize arena object with a page
-STRUCTLIBDEF int linked_arena_init(LinkedArena* const arena);
+STRUCTLIBDEF int slib_linked_arena_init(SLIBLinkedArena* const arena);
 
 // Allocate memory block with first-fit strategy
-STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count);
+STRUCTLIBDEF void* slib_linked_arena_alloc(SLIBLinkedArena* const arena, size_t count);
 
 // Allocate memory block with next-fit strategy
-STRUCTLIBDEF void* linked_arena_alloc_tail(LinkedArena* const arena, size_t count);
+STRUCTLIBDEF void* slib_linked_arena_alloc_tail(SLIBLinkedArena* const arena, size_t count);
 
 // Reset cursor to head (lazy)
-STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena);
+STRUCTLIBDEF void slib_linked_arena_reset(SLIBLinkedArena* const arena);
 
 // Free the whole arena
-STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
+STRUCTLIBDEF void slib_linked_arena_deinit(SLIBLinkedArena* const arena);
 
 // Count the number of allocate pages
-STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);
+STRUCTLIBDEF size_t slib_linked_arena_page_count(const SLIBLinkedArena* const arena);
+
+#ifdef SLIB_STRIP_PREFIXES
+typedef  SLIBLinkedArena         LinkedArena;
+# define linked_arena_init       slib_linked_arena_init
+# define linked_arena_alloc      slib_linked_arena_alloc
+# define linked_arena_alloc_tail slib_linked_arena_alloc_tail
+# define linked_arena_reset      slib_linked_arena_reset
+# define linked_arena_deinit     slib_linked_arena_deinit
+# define linked_arena_page_count slib_linked_arena_page_count
+#endif // SLIB_STRIP_PREFIXES
 
 #ifdef SLIB_LINKED_ARENA_IMPLEMENTATION
 
 #ifndef SLIB_IGNORE_ALIGNMENT_WARNINGS
-static_assert(LINKED_ARENA_PAGE_CAP % 8 == 0, "pages should be 8 byte alligned");
+static_assert(SLIB_LINKED_ARENA_PAGE_CAP % 8 == 0, "pages should be 8 byte alligned");
 #endif // SLIB_IGNORE_ALIGNMENT_WARNINGS
 
-struct LinkedArenaPage {
-    uint8_t data[LINKED_ARENA_PAGE_CAP];
-    LinkedArenaPage* next;
+struct SLIBLinkedArenaPage {
+    uint8_t data[SLIB_LINKED_ARENA_PAGE_CAP];
+    SLIBLinkedArenaPage* next;
     uint8_t* cursor;
 };
 
-STRUCTLIBDEF int linked_arena_init(LinkedArena* const arena) {
-    arena->head = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
+STRUCTLIBDEF int slib_linked_arena_init(SLIBLinkedArena* const arena) {
+    arena->head = malloc(sizeof(SLIBLinkedArenaPage));
     if (!arena->head) {
         fprintf(stderr, __FILE__": failed to init arena\n");
         return 0;
@@ -88,8 +90,8 @@ STRUCTLIBDEF int linked_arena_init(LinkedArena* const arena) {
     return 1;
 }
 
-static inline LinkedArenaPage* _internal_prepare_new_page() {
-    LinkedArenaPage* const page = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
+static inline SLIBLinkedArenaPage* _internal_prepare_new_page() {
+    SLIBLinkedArenaPage* const page = malloc(sizeof(SLIBLinkedArenaPage));
     if (!page) {
         fprintf(stderr, __FILE__": failed to grow arena\n");
         return NULL;
@@ -99,17 +101,17 @@ static inline LinkedArenaPage* _internal_prepare_new_page() {
     return page;
 }
 
-static inline void* _internal_page_bump(LinkedArenaPage* page, size_t count) {
+static inline void* _internal_page_bump(SLIBLinkedArenaPage* page, size_t count) {
     void* const block = page->cursor;
     page->cursor += count;
     return block;
 }
 
-static inline void* _internal_alloc_tail(LinkedArena* arena, size_t count) {
+static inline void* _internal_alloc_tail(SLIBLinkedArena* arena, size_t count) {
     const size_t size = arena->current->cursor - arena->current->data;
-    if (size + count > LINKED_ARENA_PAGE_CAP) {
+    if (size + count > SLIB_LINKED_ARENA_PAGE_CAP) {
         if (!arena->current->next) {
-            LinkedArenaPage* const page = _internal_prepare_new_page();
+            SLIBLinkedArenaPage* const page = _internal_prepare_new_page();
             if (!page) return NULL;
             arena->current->next = page;
         }
@@ -120,12 +122,12 @@ static inline void* _internal_alloc_tail(LinkedArena* arena, size_t count) {
     return _internal_page_bump(arena->current, count);    
 }
 
-STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count) {
-    assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
-    LinkedArenaPage* page = arena->head;
+STRUCTLIBDEF void* slib_linked_arena_alloc(SLIBLinkedArena* const arena, size_t count) {
+    assert(SLIB_LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
+    SLIBLinkedArenaPage* page = arena->head;
     while (page != arena->current) {
         const size_t size = page->cursor - page->data;
-        if (size + count <= LINKED_ARENA_PAGE_CAP) {
+        if (size + count <= SLIB_LINKED_ARENA_PAGE_CAP) {
             return _internal_page_bump(page, count);
         }
         page = page->next;
@@ -133,30 +135,30 @@ STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count) {
     return _internal_alloc_tail(arena, count);
 }
 
-STRUCTLIBDEF void* linked_arena_alloc_tail(LinkedArena* const arena, size_t count) {
-    assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
+STRUCTLIBDEF void* slib_linked_arena_alloc_tail(SLIBLinkedArena* const arena, size_t count) {
+    assert(SLIB_LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
     return _internal_alloc_tail(arena, count);
 }
 
-STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena) {
+STRUCTLIBDEF void slib_linked_arena_reset(SLIBLinkedArena* const arena) {
     arena->current         = arena->head;
     arena->current->cursor = arena->head->data;
 }
 
-STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena) {
-    LinkedArenaPage* page = arena->head;
+STRUCTLIBDEF void slib_linked_arena_deinit(SLIBLinkedArena* const arena) {
+    SLIBLinkedArenaPage* page = arena->head;
     while (page) {
-        LinkedArenaPage* next = page->next;
-        LINKED_ARENA_DEALLOC(page);
+        SLIBLinkedArenaPage* next = page->next;
+        free(page);
         page = next;
     }
     arena->head    = NULL;
     arena->current = NULL;
 }
 
-STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena) {
+STRUCTLIBDEF size_t slib_linked_arena_page_count(const SLIBLinkedArena* const arena) {
     size_t pages = 0;
-    const LinkedArenaPage* p;
+    const SLIBLinkedArenaPage* p;
     for (p = arena->head; p; p = p->next) {
         pages++;
     }
@@ -165,4 +167,4 @@ STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena) {
 
 #endif // SLIB_LINKED_ARENA_IMPLEMENTATION
 
-#endif // _SLIB_LINKED_ARENA_C
+#endif // _SLIB_SLIB_LINKED_ARENA_C
