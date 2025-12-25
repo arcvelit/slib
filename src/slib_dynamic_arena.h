@@ -55,7 +55,7 @@ STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count)
 STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena);
 STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena);
 
-#ifdef SLIB_DYNAMIC_ARENA_IMPL
+#ifdef SLIB_DYNAMIC_ARENA_IMPLEMENTATION
 
 STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity) {
     arena->data     = (uint8_t*)ARENA_ALLOC(capacity); // gcc complaining
@@ -92,6 +92,6 @@ STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena) {
     arena->size     = 0;
 }
 
-#endif // SLIB_DYNAMIC_ARENA_IMPL
+#endif // SLIB_DYNAMIC_ARENA_IMPLEMENTATION
 
 #endif // _SLIB_DYNAMIC_ARENA_C

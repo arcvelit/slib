@@ -68,7 +68,7 @@ STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena);
 STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);
 
-#ifdef SLIB_LINKED_ARENA_IMPL
+#ifdef SLIB_LINKED_ARENA_IMPLEMENTATION
 
 STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena) {
     arena->head       = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
@@ -125,6 +125,6 @@ STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena) {
     return pages;
 }
 
-#endif // SLIB_LINKED_ARENA_IMPL
+#endif // SLIB_LINKED_ARENA_IMPLEMENTATION
 
 #endif // _SLIB_LINKED_ARENA_C
