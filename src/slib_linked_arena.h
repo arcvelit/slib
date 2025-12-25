@@ -64,7 +64,6 @@ STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
 // Count the number of allocate pages
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);
 
-#define SLIB_LINKED_ARENA_IMPLEMENTATION
 #ifdef SLIB_LINKED_ARENA_IMPLEMENTATION
 
 #ifndef SLIB_IGNORE_ALIGNMENT_WARNINGS
