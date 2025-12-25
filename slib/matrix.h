@@ -2,7 +2,7 @@
 #define _SLIB_MATRIX_C
 
 /**
- * slib_matrix.h provides general purpose linear algebra tools on the stack
+ * matrix.h provides general purpose linear algebra tools on the stack
  * 
  * Create a matrix this way:
  * 
@@ -28,34 +28,34 @@ typedef struct {
     float*   data;
     uint32_t rows;
     uint32_t cols;
-} SLIBMatrix;
+} slib_matrix;
 
-STRUCTLIBDEF SLIBMatrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols);
-STRUCTLIBDEF void slib_matrix_copy(SLIBMatrix* dst, const SLIBMatrix* src);
-STRUCTLIBDEF void slib_matrix_mult(SLIBMatrix* src, const SLIBMatrix* mat1, const SLIBMatrix* mat2);
+STRUCTLIBDEF slib_matrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols);
+STRUCTLIBDEF void slib_matrix_copy(slib_matrix* dst, const slib_matrix* src);
+STRUCTLIBDEF void slib_matrix_mult(slib_matrix* src, const slib_matrix* mat1, const slib_matrix* mat2);
 
 #ifdef SLIB_STRIP_PREFIXES
-typedef  SLIBMatrix  Matrix;
+typedef  slib_matrix matrix;
 # define matrix_make slib_matrix_make
 # define matrix_copy slib_matrix_copy
 # define matrix_mult slib_matrix_mult
 #endif // SLIB_STRIP_PREFIXES
 
-#ifdef SLIB_MATRIX_IMPLEMENTATION
+#ifdef SLIB_IMPLEMENTATION
 
-STRUCTLIBDEF SLIBMatrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols) {
-    return (SLIBMatrix) {
+STRUCTLIBDEF slib_matrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols) {
+    return (slib_matrix) {
         .data = data,
         .rows = rows,
         .cols = cols
     };
 }
 
-STRUCTLIBDEF void slib_matrix_copy(SLIBMatrix* const dst, const SLIBMatrix* const src) {
+STRUCTLIBDEF void slib_matrix_copy(slib_matrix* const dst, const slib_matrix* const src) {
     memcpy(dst->data, src->data, src->rows * src->cols * sizeof(float));
 }
 
-STRUCTLIBDEF void slib_matrix_mult(SLIBMatrix* const src, const SLIBMatrix* const mat1, const SLIBMatrix* const mat2) {
+STRUCTLIBDEF void slib_matrix_mult(slib_matrix* const src, const slib_matrix* const mat1, const slib_matrix* const mat2) {
     #ifdef SLIB_ASSERT_MATRIX_MULT
     assert(mat1->cols == mat2->rows && "matrix size mismatch");
     #endif
@@ -70,6 +70,6 @@ STRUCTLIBDEF void slib_matrix_mult(SLIBMatrix* const src, const SLIBMatrix* cons
     }
 }
 
-#endif // SLIB_MATRIX_IMPLEMENTATION
+#endif // SLIB_IMPLEMENTATION
 
 #endif // _SLIB_MATRIX_C
