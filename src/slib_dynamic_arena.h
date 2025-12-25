@@ -23,6 +23,10 @@
 # define STRUCTLIBDEF
 #endif
 
+#ifndef DYNAMIC_ARENA_INITIAL_CAP
+# define DYNAMIC_ARENA_INITIAL_CAP 1024
+#endif // DYNAMIC_ARENA_INITIAL_CAP
+
 #ifndef ARENA_ALLOC 
 # define ARENA_ALLOC malloc
 #endif // ARENA_ALLOC
@@ -50,17 +54,29 @@ typedef struct {
 // Translates index to pointer with offset index (i.e. for arrays)
 #define arena_offset(_T, _a, _index, _off) arena_get(_T, _a, _index + (_off)*sizeof(_T))
 
-STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity);
+// Initialize arena object with initial capacity
+STRUCTLIBDEF int dynamic_arena_init(DynamicArena* const arena);
+
+// Allocate a block and get its index (fail: SIZE_MAX)
 STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count);
+
+// Reset the size to zero (lazy)
 STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena);
+
+// Free the whole arena
 STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena);
 
 #ifdef SLIB_DYNAMIC_ARENA_IMPLEMENTATION
 
-STRUCTLIBDEF void dynamic_arena_init(DynamicArena* const arena, const size_t capacity) {
-    arena->data     = (uint8_t*)ARENA_ALLOC(capacity); // gcc complaining
-    arena->capacity = capacity;
-    arena->size     = 0;
+STRUCTLIBDEF int dynamic_arena_init(DynamicArena* const arena) {
+    arena->data = ARENA_ALLOC(DYNAMIC_ARENA_INITIAL_CAP);
+    if (!arena->data) {
+        fprintf(stderr, __FILE__": failed to init arena");
+        return 0;
+    }
+    arena->capacity = DYNAMIC_ARENA_INITIAL_CAP;
+    arena->size = 0;
+    return 1;
 }
 
 STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count) {
@@ -68,7 +84,7 @@ STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count)
     if (required > arena->capacity) {
         size_t cap = arena->capacity;
         do cap *= 2; while (required > cap);
-        uint8_t* const reallocated = (uint8_t*)ARENA_REALLOC(arena->data, cap);
+        uint8_t* const reallocated = ARENA_REALLOC(arena->data, cap);
         if (!reallocated) {
             fprintf(stderr, __FILE__": failed to grow arena");
             return SIZE_MAX;
@@ -76,9 +92,9 @@ STRUCTLIBDEF size_t dynamic_arena_alloc(DynamicArena* const arena, size_t count)
         arena->data = reallocated;
         arena->capacity = cap;
     }
-    size_t ret_index = arena->size;
+    size_t block = arena->size;
     arena->size += count;
-    return ret_index;
+    return block;
 }
 
 STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena) {
@@ -87,7 +103,7 @@ STRUCTLIBDEF void dynamic_arena_reset(DynamicArena* const arena) {
 
 STRUCTLIBDEF void dynamic_arena_deinit(DynamicArena* const arena) {
     ARENA_DEALLOC(arena->data);
-    arena->data     = 0;
+    arena->data     = NULL;
     arena->capacity = 0;
     arena->size     = 0;
 }
