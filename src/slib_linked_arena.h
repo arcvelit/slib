@@ -4,29 +4,18 @@
 /**
  * slib_linked_arena.h provides a general purpose pool allocator
  * 
- * Upon initializing, the arena allocates a page
- * 
+ * Start with
  * LinkedArena a = {0};
- * linked_arena_init(&a, 1024);
+ * linked_arena_init(&a);
  * 
- * LinkedArena.current: [ Page 1 ] -> null
- * |____.head:    [ Page 1 ] -> null
+ * Allocate with 
+ * linked_arena_alloc       -> implements first-fit
+ * linked_arena_alloc_tail  -> implements next-fit
  * 
- * When a page reaches full capacity or is too full to allocate
- * it allocates a new page and adds it to the linked list
+ * Free memory or reset with
+ * linked_arena_free
+ * linked_arena_reset
  * 
- * LinkedArena.current: [ Page 2 ] -> null
- * |___ .head:    [ Page 1 ] -> [ Page 2 ] -> null
- * 
- * Calling reset puts the cursor back to the head thus 'clearing' the LinkedArena
- * 
- * LinkedArena.current: [ Page 1 ] -> ...
- * |___ .head:    [ Page 1 ] -> [ Page 2 ] -> null
- * 
- * 
- * Tradeoff: if the required memory block is too large, it will jump to the next 
- * page, essential wasting space in the original page (not really "full").
- *
  * */
 
 #include <stdint.h>
@@ -51,57 +40,108 @@
 #endif // LINKED_ARENA_ALLOC
 
 typedef struct LinkedArenaPage LinkedArenaPage;
-struct LinkedArenaPage {
-    uint8_t data[LINKED_ARENA_PAGE_CAP];
-    LinkedArenaPage* next;
-};
 
 typedef struct {
     LinkedArenaPage* head;
     LinkedArenaPage* current;
-    uint8_t* cursor;
 } LinkedArena;
 
-STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena);
+// Initialize arena object with a page
+STRUCTLIBDEF int linked_arena_init(LinkedArena* const arena);
+
+// Allocate memory block with first-fit strategy
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count);
+
+// Allocate memory block with next-fit strategy
+STRUCTLIBDEF void* linked_arena_alloc_tail(LinkedArena* const arena, size_t count);
+
+// Reset cursor to head (lazy)
 STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena);
+
+// Free the whole arena
 STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena);
+
+// Count the number of allocate pages
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena);
 
+#define SLIB_LINKED_ARENA_IMPLEMENTATION
 #ifdef SLIB_LINKED_ARENA_IMPLEMENTATION
 
-STRUCTLIBDEF void linked_arena_init(LinkedArena* const arena) {
-    arena->head       = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
-    arena->head->next = 0;
-    arena->current    = arena->head;
-    arena->cursor     = &arena->head->data[0];
+#ifndef SLIB_IGNORE_ALIGNMENT_WARNINGS
+static_assert(LINKED_ARENA_PAGE_CAP % 8 == 0, "pages should be 8 byte alligned");
+#endif // SLIB_IGNORE_ALIGNMENT_WARNINGS
+
+struct LinkedArenaPage {
+    uint8_t data[LINKED_ARENA_PAGE_CAP];
+    LinkedArenaPage* next;
+    uint8_t* cursor;
+};
+
+STRUCTLIBDEF int linked_arena_init(LinkedArena* const arena) {
+    arena->head = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
+    if (!arena->head) {
+        fprintf(stderr, __FILE__": failed to init arena\n");
+        return 0;
+    }
+    arena->head->cursor = arena->head->data;
+    arena->head->next   = NULL;
+    arena->current      = arena->head;
+    return 1;
+}
+
+static inline LinkedArenaPage* _internal_prepare_new_page() {
+    LinkedArenaPage* const page = LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
+    if (!page) {
+        fprintf(stderr, __FILE__": failed to grow arena\n");
+        return NULL;
+    }
+    page->cursor = page->data;
+    page->next   = NULL;
+    return page;
+}
+
+static inline void* _internal_page_bump(LinkedArenaPage* page, size_t count) {
+    void* const block = page->cursor;
+    page->cursor += count;
+    return block;
+}
+
+static inline void* _internal_alloc_tail(LinkedArena* arena, size_t count) {
+    const size_t size = arena->current->cursor - arena->current->data;
+    if (size + count > LINKED_ARENA_PAGE_CAP) {
+        if (!arena->current->next) {
+            LinkedArenaPage* const page = _internal_prepare_new_page();
+            if (!page) return NULL;
+            arena->current->next = page;
+        }
+        // lazy reset current+1 page
+        arena->current = arena->current->next;
+        arena->current->cursor = arena->current->data;
+    }
+    return _internal_page_bump(arena->current, count);    
 }
 
 STRUCTLIBDEF void* linked_arena_alloc(LinkedArena* const arena, size_t count) {
     assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
-    const size_t page_size = arena->cursor - arena->current->data;
-    if (page_size + count > LINKED_ARENA_PAGE_CAP) {
-        if (!arena->current->next) {
-            LinkedArenaPage* const page =
-            LINKED_ARENA_ALLOC(sizeof(LinkedArenaPage));
-            if (!page) {
-                fprintf(stderr, __FILE__": failed to grow arena\n");
-                return 0;
-            }
-            page->next = 0;
-            arena->current->next = page;
+    LinkedArenaPage* page = arena->head;
+    while (page != arena->current) {
+        const size_t size = page->cursor - page->data;
+        if (size + count <= LINKED_ARENA_PAGE_CAP) {
+            return _internal_page_bump(page, count);
         }
-        arena->current =  arena->current->next;
-        arena->cursor  = &arena->current->data[0];
+        page = page->next;
     }
-    uint8_t* const ret_cursor = arena->cursor;
-    arena->cursor = ret_cursor + count;
-    return ret_cursor;
+    return _internal_alloc_tail(arena, count);
+}
+
+STRUCTLIBDEF void* linked_arena_alloc_tail(LinkedArena* const arena, size_t count) {
+    assert(LINKED_ARENA_PAGE_CAP >= count && "page size is to small");
+    return _internal_alloc_tail(arena, count);
 }
 
 STRUCTLIBDEF void linked_arena_reset(LinkedArena* const arena) {
-    arena->current =  arena->head;
-    arena->cursor  = &arena->head->data[0];
+    arena->current         = arena->head;
+    arena->current->cursor = arena->head->data;
 }
 
 STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena) {
@@ -111,9 +151,8 @@ STRUCTLIBDEF void linked_arena_deinit(LinkedArena* const arena) {
         LINKED_ARENA_DEALLOC(page);
         page = next;
     }
-    arena->head    = 0;
-    arena->cursor  = 0;
-    arena->current = 0;
+    arena->head    = NULL;
+    arena->current = NULL;
 }
 
 STRUCTLIBDEF size_t linked_arena_page_count(const LinkedArena* const arena) {
