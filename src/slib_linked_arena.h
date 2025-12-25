@@ -13,7 +13,7 @@
  * linked_arena_alloc_tail  -> implements next-fit
  * 
  * Free memory or reset with
- * linked_arena_free
+ * linked_arena_deinit
  * linked_arena_reset
  * 
  * */
@@ -25,7 +25,7 @@
 
 #ifndef STRUCTLIBDEF
 # define STRUCTLIBDEF
-#endif
+#endif // STRUCTLIBDEF
 
 #ifndef LINKED_ARENA_PAGE_CAP
 # define LINKED_ARENA_PAGE_CAP 1024
