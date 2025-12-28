@@ -6,7 +6,7 @@
 #include <string.h>
 
 /**
- * vector.h provides a template vector
+ * vector.h provides a template vector definition and implementation
  * 
  * Declare a vector with
  * 
@@ -135,7 +135,7 @@ STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec) {
 
 #undef SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL
 
-#endif // SLIB_VECTOR_IMPLEMENTATION
+#endif // SLIB_IMPLEMENTATION
 
 #undef SLIB_VECTOR_TYPE
 
@@ -147,5 +147,3 @@ STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec) {
 #undef SLIB_VECTOR_APPEND_MANY_M
 #undef SLIB_VECTOR_APPEND_BUFFER_M
 #undef SLIB_VECTOR_FREE_M
-
-#undef SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL
