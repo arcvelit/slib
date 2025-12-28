@@ -1,75 +1,94 @@
-#ifndef _SLIB_MATRIX_C
-#define _SLIB_MATRIX_C
-
-/**
- * matrix.h provides general purpose linear algebra tools on the stack
- * 
- * Create a matrix this way:
- * 
- *  float _a[2][2] = {0};
- *  Mat A = matrix_make((float*)&_a, 2, 2);
- * 
- * */
+#ifndef SLIB_MATRIX_TYPE
+#error "SLIB_MATRIX_TYPE must be defined"
+#endif // SLIB_MATRIX_TYPE
 
 #include <stdint.h>
 #include <string.h>
+
+#ifdef SLIB_ASSERT_MATRIX_MULT 
+# include <assert.h> // hidden directive for speed
+#endif // SLIB_ASSERT_MATRIX_MULT
+
+/**
+ * matrix.h provides general purpose matrix tools on the stack
+ * 
+ * Declare a matrix with
+ * 
+ * #define SLIB_MATRIX_TYPE int
+ * #include "matrix.h"
+ * 
+ * Prefixes will be
+ * slib_mat_int_...
+ * 
+ * unless SLIB_STRIP_PREFIXES is defined, otherwise
+ * mat_int_....
+
+ * */ 
+
+#define SLIB_CONCAT(a,b)  a##b
+#define SLIB_CONCAT2(a,b) SLIB_CONCAT(a,b)
 
 #ifndef STRUCTLIBDEF
 # define STRUCTLIBDEF
 #endif
 
-#if SLIB_ASSERT_MATRIX_MULT 
-# include <assert.h> // hidden directive for speed
-#endif // SLIB_ASSERT_MATRIX_MULT
-
-#define MATRIX_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
+#ifdef SLIB_STRIP_PREFIXES
+# define SLIB_MATRIX SLIB_CONCAT2(mat_, SLIB_MATRIX_TYPE)
+#else
+# define SLIB_MATRIX SLIB_CONCAT2(slib_mat, SLIB_MATRIX_TYPE)
+#endif // SLIB_STRIP_PREFIXES
 
 typedef struct {
-    float*   data;
+    SLIB_MATRIX_TYPE* data;
     uint32_t rows;
     uint32_t cols;
-} slib_matrix;
+} SLIB_MATRIX;
 
-STRUCTLIBDEF slib_matrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols);
-STRUCTLIBDEF void slib_matrix_copy(slib_matrix* dst, const slib_matrix* src);
-STRUCTLIBDEF void slib_matrix_mult(slib_matrix* src, const slib_matrix* mat1, const slib_matrix* mat2);
+#define SLIB_MATRIX_MAKE_M SLIB_CONCAT2(SLIB_MATRIX, _make)
+#define SLIB_MATRIX_COPY_M SLIB_CONCAT2(SLIB_MATRIX, _copy)
+#define SLIB_MATRIX_MULT_M SLIB_CONCAT2(SLIB_MATRIX, _mult)
 
-#ifdef SLIB_STRIP_PREFIXES
-typedef  slib_matrix matrix;
-# define matrix_make slib_matrix_make
-# define matrix_copy slib_matrix_copy
-# define matrix_mult slib_matrix_mult
-#endif // SLIB_STRIP_PREFIXES
+STRUCTLIBDEF SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint32_t rows, const uint32_t cols);
+STRUCTLIBDEF void SLIB_MATRIX_COPY_M(SLIB_MATRIX* dst, const SLIB_MATRIX* src);
+STRUCTLIBDEF void SLIB_MATRIX_MULT_M(SLIB_MATRIX* src, const SLIB_MATRIX* mat1, const SLIB_MATRIX* mat2);
 
 #ifdef SLIB_IMPLEMENTATION
 
-STRUCTLIBDEF slib_matrix slib_matrix_make(float* const data, const uint32_t rows, const uint32_t cols) {
-    return (slib_matrix) {
+#define SLIB_MAT_INDEX(mat, i, j) ((mat)->data[(i)*(mat)->cols+(j)])
+
+STRUCTLIBDEF SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint32_t rows, const uint32_t cols) {
+    return (SLIB_MATRIX) {
         .data = data,
         .rows = rows,
         .cols = cols
     };
 }
 
-STRUCTLIBDEF void slib_matrix_copy(slib_matrix* const dst, const slib_matrix* const src) {
-    memcpy(dst->data, src->data, src->rows * src->cols * sizeof(float));
+STRUCTLIBDEF void SLIB_MATRIX_COPY_M(SLIB_MATRIX* const dst, const SLIB_MATRIX* const src) {
+    memcpy(dst->data, src->data, src->rows * src->cols * sizeof(SLIB_MATRIX_TYPE));
 }
 
-STRUCTLIBDEF void slib_matrix_mult(slib_matrix* const src, const slib_matrix* const mat1, const slib_matrix* const mat2) {
+STRUCTLIBDEF void SLIB_MATRIX_MULT_M(SLIB_MATRIX* const src, const SLIB_MATRIX* const mat1, const SLIB_MATRIX* const mat2) {
     #ifdef SLIB_ASSERT_MATRIX_MULT
     assert(mat1->cols == mat2->rows && "matrix size mismatch");
     #endif
     for (uint32_t i = 0; i < mat1->rows; i++) {
         for (uint32_t j = 0; j < mat2->cols; j++) {
-            float acc = 0;
+            SLIB_MATRIX_TYPE acc = 0;
             for (uint32_t k = 0; k < mat2->rows; k++) {
-                acc += MATRIX_INDEX (mat1, i, k) * MATRIX_INDEX (mat2, k, j);
+                acc += SLIB_MAT_INDEX(mat1, i, k) * SLIB_MAT_INDEX(mat2, k, j);
             }
-            MATRIX_INDEX (src, i, j) = acc;
+            SLIB_MAT_INDEX(src, i, j) = acc;
         }
     }
 }
 
 #endif // SLIB_IMPLEMENTATION
 
-#endif // _SLIB_MATRIX_C
+#undef SLIB_MATRIX_TYPE
+
+#undef SLIB_MATRIX
+
+#undef SLIB_MATRIX_MAKE_M
+#undef SLIB_MATRIX_COPY_M
+#undef SLIB_MATRIX_MULT_M
