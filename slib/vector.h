@@ -28,8 +28,14 @@
 # define STRUCTLIBDEF
 #endif // STRUCTLIBDEF
 
+#ifndef SLIB_VECTOR_ERROR
+#define SLIB_VECTOR_ERROR
+static int slib_vecerr = 0;
+#endif // SLIB_VECTOR_ERROR
+
 #ifdef SLIB_STRIP_PREFIXES
 # define SLIB_VECTOR SLIB_CONCAT2(vec_, SLIB_VECTOR_TYPE)
+# define vecerr slib_vecerr
 #else
 # define SLIB_VECTOR SLIB_CONCAT2(slib_vec_, SLIB_VECTOR_TYPE)
 #endif // SLIB_STRIP_PREFIXES
@@ -51,11 +57,11 @@ typedef struct {
 #define SLIB_VECTOR_APPEND_BUFFER_M SLIB_CONCAT2(SLIB_VECTOR, _append_buffer)
 #define SLIB_VECTOR_FREE_M          SLIB_CONCAT2(SLIB_VECTOR, _free)
 
-STRUCTLIBDEF int SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount);
+STRUCTLIBDEF void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount);
 STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t amount);
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem);
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src);
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size);
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem);
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src);
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size);
 STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec);
 
 #ifdef SLIB_IMPLEMENTATION
@@ -64,12 +70,15 @@ STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec);
 #define SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL SLIB_CONCAT2(SLIB_VECTOR, _increase_capacity_internal)
 
 static inline int SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL(SLIB_VECTOR* const vec, const size_t required) {
+    slib_vecerr = 0;
     if (vec->cap < required) {
         size_t new_cap = vec->cap ? vec->cap : SLIB_VECTOR_INITIAL_CAP;
         do new_cap *= 2; while (new_cap < required);
-        fflush(stdout);
         SLIB_VECTOR_TYPE* const new_data = realloc(vec->data, new_cap * sizeof(SLIB_VECTOR_TYPE));
-        if (!new_data) return 0;
+        if (!new_data) {
+            slib_vecerr = 1;
+            return 0;
+        }
         vec->data = new_data;
         vec->cap  = new_cap;
 
@@ -78,14 +87,17 @@ static inline int SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL(SLIB_VECTOR* const vec, 
 }
 
 // API
-STRUCTLIBDEF int SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount) {
+STRUCTLIBDEF void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount) {
+    slib_vecerr = 0;
     if (vec->cap < amount) {
         SLIB_VECTOR_TYPE* const new_data = realloc(vec->data, amount * sizeof(SLIB_VECTOR_TYPE));
-        if (!new_data) return 0;
+        if (!new_data) {
+            slib_vecerr = 1;
+            return;
+        };
         vec->data = new_data;
         vec->cap  = amount;
     }
-    return 1;
 }
 
 STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t amount) {
@@ -98,32 +110,26 @@ STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t
     return NULL;
 }
 
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem) {
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem) {
     if (SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL(vec, vec->size + 1)) {
         vec->data[vec->size++] = elem;
-        return 1;
     }
-    return 0;
 }
 
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src) {
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src) {
     const size_t new_size = dst->size + src->size;
     if (SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL(dst, new_size)) {
         memcpy(dst->data + dst->size, src->data, src->size * sizeof(SLIB_VECTOR_TYPE));
         dst->size = new_size;
-        return 1;
     }
-    return 0;
 }
 
-STRUCTLIBDEF int SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size) {
+STRUCTLIBDEF void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size) {
     const size_t new_size = dst->size + size;
     if (SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL(dst, new_size)) {
         memcpy(dst->data + dst->size, src, size * sizeof(SLIB_VECTOR_TYPE));
         dst->size = new_size;
-        return 1;
     }
-    return 0;
 }
 
 STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec) {
