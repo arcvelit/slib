@@ -57,11 +57,22 @@ typedef struct {
 #define SLIB_VECTOR_APPEND_BUFFER_M SLIB_CONCAT2(SLIB_VECTOR, _append_buffer)
 #define SLIB_VECTOR_FREE_M          SLIB_CONCAT2(SLIB_VECTOR, _free)
 
+// Ensure the vector has a capacity of this amount
 STRUCTLIBDEF void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount);
+
+// Bumps the size of the vector and returns a pointer to the first slot (allows to emplace without copying)
 STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t amount);
+
+// Increases the size and copies the object to the vector
 STRUCTLIBDEF void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem);
+
+// Appends the content of another vector
 STRUCTLIBDEF void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src);
+
+// Appends from an array of elements (uses memcpy)
 STRUCTLIBDEF void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size);
+
+// Frees the allocated memory
 STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec);
 
 #ifdef SLIB_IMPLEMENTATION
