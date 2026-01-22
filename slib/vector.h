@@ -8,8 +8,6 @@
 /**
  * vector.h provides a template vector definition and implementation
  * 
- * Declare a vector with
- * 
  * #define SLIB_VECTOR_TYPE int
  * #include "vector.h"
  * 
