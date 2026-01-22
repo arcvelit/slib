@@ -55,6 +55,22 @@ typedef struct {
 #define SLIB_VECTOR_APPEND_BUFFER_M SLIB_CONCAT2(SLIB_VECTOR, _append_buffer)
 #define SLIB_VECTOR_FREE_M          SLIB_CONCAT2(SLIB_VECTOR, _free)
 
+#define SLIB_VECTOR_COMPARATOR SLIB_CONCAT2(SLIB_VECTOR, _comparator)
+
+// Comparing function pointer
+typedef int (*SLIB_VECTOR_COMPARATOR)(SLIB_VECTOR_TYPE*);
+
+#define SLIB_VECTOR_ITERATOR SLIB_CONCAT2(SLIB_VECTOR, _iterator)
+
+typedef struct {
+    const SLIB_VECTOR* const vec;
+    SLIB_VECTOR_TYPE* next;
+} SLIB_VECTOR_ITERATOR;
+
+#define SLIB_VECTOR_ITERATOR_MAKE_M SLIB_CONCAT2(SLIB_VECTOR, _iterator_make)
+#define SLIB_VECTOR_FIRST_M         SLIB_CONCAT2(SLIB_VECTOR, _first)
+#define SLIB_VECTOR_NEXT_M          SLIB_CONCAT2(SLIB_VECTOR, _next)
+
 // Ensure the vector has a capacity of this amount
 STRUCTLIBDEF void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount);
 
@@ -72,6 +88,15 @@ STRUCTLIBDEF void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB
 
 // Frees the allocated memory
 STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec);
+
+// Creates a basic iterator state
+STRUCTLIBDEF SLIB_VECTOR_ITERATOR SLIB_VECTOR_ITERATOR_MAKE_M(const SLIB_VECTOR* vec);
+
+// Returns pointer of first occurence or null
+STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* const vec, SLIB_VECTOR_COMPARATOR comparator);
+
+// Returns pointer of next occurence or null
+STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SLIB_VECTOR_COMPARATOR comparator);
 
 #ifdef SLIB_IMPLEMENTATION
 
@@ -146,6 +171,34 @@ STRUCTLIBDEF void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec) {
     vec->data = NULL;
     vec->size = 0;
     vec->cap  = 0;
+}
+
+STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* const vec, SLIB_VECTOR_COMPARATOR comparator) {
+    const SLIB_VECTOR_TYPE* const end = vec->data + vec->size;
+    for (SLIB_VECTOR_TYPE* it = vec->data; it < end; it++) {
+        if (comparator(it)) {
+            return it;
+        }
+    }
+    return NULL;
+}
+
+STRUCTLIBDEF SLIB_VECTOR_ITERATOR SLIB_VECTOR_ITERATOR_MAKE_M(const SLIB_VECTOR* vec) {
+    return (SLIB_VECTOR_ITERATOR) {
+        .vec = vec,
+        .next = vec->data
+    };
+}
+
+STRUCTLIBDEF SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SLIB_VECTOR_COMPARATOR comparator) {
+    const SLIB_VECTOR_TYPE* const end = vec_iter->vec->data + vec_iter->vec->size;
+    while (vec_iter->next < end) {
+        if (comparator(vec_iter->next)) {
+            return vec_iter->next++;
+        }
+        vec_iter->next++;
+    }
+    return NULL;
 }
 
 #undef SLIB_VECTOR_PREPARE_CAPACITY_INTERNAL
