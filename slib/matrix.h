@@ -35,7 +35,7 @@
 #ifdef SLIB_STRIP_PREFIXES
 # define SLIB_MATRIX SLIB_CONCAT2(mat_, SLIB_MATRIX_TYPE)
 #else
-# define SLIB_MATRIX SLIB_CONCAT2(slib_mat, SLIB_MATRIX_TYPE)
+# define SLIB_MATRIX SLIB_CONCAT2(slib_mat_, SLIB_MATRIX_TYPE)
 #endif // SLIB_STRIP_PREFIXES
 
 typedef struct {
@@ -47,10 +47,12 @@ typedef struct {
 #define SLIB_MATRIX_MAKE_M SLIB_CONCAT2(SLIB_MATRIX, _make)
 #define SLIB_MATRIX_COPY_M SLIB_CONCAT2(SLIB_MATRIX, _copy)
 #define SLIB_MATRIX_MULT_M SLIB_CONCAT2(SLIB_MATRIX, _mult)
+#define SLIB_MATRIX_SCALE_M SLIB_CONCAT2(SLIB_MATRIX, _scale)
 
 STRUCTLIBDEF SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint32_t rows, const uint32_t cols);
 STRUCTLIBDEF void SLIB_MATRIX_COPY_M(SLIB_MATRIX* dst, const SLIB_MATRIX* src);
 STRUCTLIBDEF void SLIB_MATRIX_MULT_M(SLIB_MATRIX* src, const SLIB_MATRIX* mat1, const SLIB_MATRIX* mat2);
+STRUCTLIBDEF void SLIB_MATRIX_SCALE_M(SLIB_MATRIX* src, const SLIB_MATRIX_TYPE scalar);
 
 #ifdef SLIB_IMPLEMENTATION
 
@@ -80,6 +82,12 @@ STRUCTLIBDEF void SLIB_MATRIX_MULT_M(SLIB_MATRIX* const src, const SLIB_MATRIX* 
             }
             SLIB_MAT_INDEX(src, i, j) = acc;
         }
+    }
+}
+
+STRUCTLIBDEF void SLIB_MATRIX_SCALE_M(SLIB_MATRIX* src, const SLIB_MATRIX_TYPE scalar) {
+    for (size_t i = 0; i < src->rows * src->cols; i++) {
+        src->data[i] *= scalar;
     }
 }
 
