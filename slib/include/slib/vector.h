@@ -2,22 +2,10 @@
 #error "SLIB_VECTOR_TYPE must be defined"
 #endif // SLIB_VECTOR_TYPE
 
+// vector.h (generic)
+
 #include <stdlib.h>
 #include <string.h>
-
-/**
- * vector.h provides a template vector definition and implementation
- * 
- * #define SLIB_VECTOR_TYPE int
- * #include "vector.h"
- * 
- * Prefixes will be
- * slib_vec_int_...
- * 
- * unless SLIB_STRIP_PREFIXES is defined, otherwise
- * vec_int_....
- * 
- */
 
 #define SLIB_CONCAT(a,b)  a##b
 #define SLIB_CONCAT2(a,b) SLIB_CONCAT(a,b)
