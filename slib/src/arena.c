@@ -23,7 +23,7 @@ STRUCTLIBDEF int slib_arena_init(slib_arena* const arena) {
     return 1;
 }
 
-static inline slib_arena_page* _internal_prepare_new_page() {
+static slib_arena_page* slib__internal_prepare_new_page() {
     slib_arena_page* const page = malloc(sizeof(slib_arena_page));
     if (!page) {
         fprintf(stderr, __FILE__": failed to grow arena\n");
@@ -34,17 +34,17 @@ static inline slib_arena_page* _internal_prepare_new_page() {
     return page;
 }
 
-static inline void* _internal_page_bump(slib_arena_page* page, size_t count) {
+static void* slib__internal_alloc_tail(slib_arena_page* page, size_t count) {
     void* const block = page->cursor;
     page->cursor += count;
     return block;
 }
 
-static inline void* _internal_alloc_tail(slib_arena* arena, size_t count) {
+static void* slib__internal_alloc_tail(slib_arena* arena, size_t count) {
     const size_t size = arena->current->cursor - arena->current->data;
     if (size + count > SLIB_ARENA_PAGE_CAP) {
         if (!arena->current->next) {
-            slib_arena_page* const page = _internal_prepare_new_page();
+            slib_arena_page* const page = slib__internal_prepare_new_page();
             if (!page) return NULL;
             arena->current->next = page;
         }
@@ -52,7 +52,7 @@ static inline void* _internal_alloc_tail(slib_arena* arena, size_t count) {
         arena->current = arena->current->next;
         arena->current->cursor = arena->current->data;
     }
-    return _internal_page_bump(arena->current, count);    
+    return slib__internal_alloc_tail(arena->current, count);    
 }
 
 STRUCTLIBDEF void* slib_arena_alloc(slib_arena* const arena, size_t count) {
@@ -61,16 +61,16 @@ STRUCTLIBDEF void* slib_arena_alloc(slib_arena* const arena, size_t count) {
     while (page != arena->current) {
         const size_t size = page->cursor - page->data;
         if (size + count <= SLIB_ARENA_PAGE_CAP) {
-            return _internal_page_bump(page, count);
+            return slib__internal_alloc_tail(page, count);
         }
         page = page->next;
     }
-    return _internal_alloc_tail(arena, count);
+    return slib__internal_alloc_tail(arena, count);
 }
 
 STRUCTLIBDEF void* slib_arena_alloc_tail(slib_arena* const arena, size_t count) {
     assert(SLIB_ARENA_PAGE_CAP >= count && "page size is to small");
-    return _internal_alloc_tail(arena, count);
+    return slib__internal_alloc_tail(arena, count);
 }
 
 STRUCTLIBDEF void slib_arena_reset(slib_arena* const arena) {
