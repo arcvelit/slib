@@ -11,12 +11,10 @@ struct slib_arena_page {
     uint8_t* cursor;
 };
 
-SLIB_API int slib_arena_init(slib_arena* const arena) {
+SLIB_API int slib_arena_init(slib_arena* arena) {
     arena->head = malloc(sizeof(slib_arena_page));
-    if (!arena->head) {
-        fprintf(stderr, __FILE__": failed to init arena\n");
-        return 0;
-    }
+    assert(arena->head && "error: failed to init slib_arena");
+
     arena->head->cursor = arena->head->data;
     arena->head->next   = NULL;
     arena->current      = arena->head;
@@ -25,10 +23,8 @@ SLIB_API int slib_arena_init(slib_arena* const arena) {
 
 static inline slib_arena_page* slib__internal_prepare_new_page() {
     slib_arena_page* const page = malloc(sizeof(slib_arena_page));
-    if (!page) {
-        fprintf(stderr, __FILE__": failed to grow arena\n");
-        return NULL;
-    }
+    assert(page && "error: failed to grow slib_arena");
+    
     page->cursor = page->data;
     page->next   = NULL;
     return page;
@@ -55,7 +51,7 @@ static inline void* slib__internal_alloc_tail(slib_arena* arena, size_t count) {
     return slib__internal_page_bump(arena->current, count);    
 }
 
-SLIB_API void* slib_arena_alloc(slib_arena* const arena, size_t count) {
+SLIB_API void* slib_arena_alloc(slib_arena* arena, size_t count) {
     assert(SLIB_ARENA_PAGE_CAP >= count && "page size is to small");
     slib_arena_page* page = arena->head;
     while (page != arena->current) {
@@ -68,17 +64,17 @@ SLIB_API void* slib_arena_alloc(slib_arena* const arena, size_t count) {
     return slib__internal_alloc_tail(arena, count);
 }
 
-SLIB_API void* slib_arena_alloc_tail(slib_arena* const arena, size_t count) {
+SLIB_API void* slib_arena_alloc_tail(slib_arena* arena, size_t count) {
     assert(SLIB_ARENA_PAGE_CAP >= count && "page size is to small");
     return slib__internal_alloc_tail(arena, count);
 }
 
-SLIB_API void slib_arena_reset(slib_arena* const arena) {
+SLIB_API void slib_arena_reset(slib_arena* arena) {
     arena->current         = arena->head;
     arena->current->cursor = arena->head->data;
 }
 
-SLIB_API void slib_arena_deinit(slib_arena* const arena) {
+SLIB_API void slib_arena_cleanup(slib_arena* arena) {
     slib_arena_page* page = arena->head;
     while (page) {
         slib_arena_page* next = page->next;
@@ -89,7 +85,7 @@ SLIB_API void slib_arena_deinit(slib_arena* const arena) {
     arena->current = NULL;
 }
 
-SLIB_API size_t slib_arena_page_count(const slib_arena* const arena) {
+SLIB_API size_t slib_arena_page_count(const slib_arena* arena) {
     size_t pages = 0;
     const slib_arena_page* p;
     for (p = arena->head; p; p = p->next) {

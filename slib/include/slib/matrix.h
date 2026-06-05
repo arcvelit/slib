@@ -35,8 +35,8 @@ typedef struct {
 #define SLIB_MATRIX_MULT_M SLIB_CONCAT2(SLIB_MATRIX, _mult)
 #define SLIB_MATRIX_SCALE_M SLIB_CONCAT2(SLIB_MATRIX, _scale)
 
-SLIB_API SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint32_t rows, const uint32_t cols);
-SLIB_API void SLIB_MATRIX_COPY_M(SLIB_MATRIX* dst, const SLIB_MATRIX* src);
+SLIB_API SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* data, const uint32_t rows, const uint32_t cols);
+SLIB_API void SLIB_MATRIX_COPY_M(SLIB_MATRIX* dest, const SLIB_MATRIX* src);
 SLIB_API void SLIB_MATRIX_MULT_M(SLIB_MATRIX* src, const SLIB_MATRIX mat1, const SLIB_MATRIX mat2);
 SLIB_API void SLIB_MATRIX_SCALE_M(SLIB_MATRIX* src, const SLIB_MATRIX_TYPE scalar);
 
@@ -44,7 +44,7 @@ SLIB_API void SLIB_MATRIX_SCALE_M(SLIB_MATRIX* src, const SLIB_MATRIX_TYPE scala
 
 #define SLIB_MAT_INDEX(mat, i, j) ((mat).data[(i)*(mat).cols+(j)])
 
-SLIB_API SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint32_t rows, const uint32_t cols) {
+SLIB_API SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* data, const uint32_t rows, const uint32_t cols) {
     return (SLIB_MATRIX) {
         .data = data,
         .rows = rows,
@@ -52,11 +52,11 @@ SLIB_API SLIB_MATRIX SLIB_MATRIX_MAKE_M(SLIB_MATRIX_TYPE* const data, const uint
     };
 }
 
-SLIB_API void SLIB_MATRIX_COPY_M(SLIB_MATRIX* const dst, const SLIB_MATRIX* const src) {
-    memcpy(dst->data, src->data, src->rows * src->cols * sizeof(SLIB_MATRIX_TYPE));
+SLIB_API void SLIB_MATRIX_COPY_M(SLIB_MATRIX* dest, const SLIB_MATRIX* src) {
+    memcpy(dest->data, src->data, src->rows * src->cols * sizeof(SLIB_MATRIX_TYPE));
 }
 
-SLIB_API void SLIB_MATRIX_MULT_M(SLIB_MATRIX* const src, const SLIB_MATRIX mat1, const SLIB_MATRIX mat2) {
+SLIB_API void SLIB_MATRIX_MULT_M(SLIB_MATRIX* dest, const SLIB_MATRIX mat1, const SLIB_MATRIX mat2) {
     #ifdef SLIB_ASSERT_MATRIX_MULT
     assert(mat1.cols == mat2.rows && "matrix size mismatch");
     #endif
@@ -66,7 +66,7 @@ SLIB_API void SLIB_MATRIX_MULT_M(SLIB_MATRIX* const src, const SLIB_MATRIX mat1,
             for (uint32_t k = 0; k < mat2.rows; k++) {
                 acc += SLIB_MAT_INDEX(mat1, i, k) * SLIB_MAT_INDEX(mat2, k, j);
             }
-            SLIB_MAT_INDEX(*src, i, j) = acc;
+            SLIB_MAT_INDEX(*dest, i, j) = acc;
         }
     }
 }

@@ -2,10 +2,15 @@
 #error "SLIB_VECTOR_TYPE must be defined"
 #endif
 
+#ifndef SLIB_VECTOR_NAME
+#define SLIB_VECTOR_NAME SLIB_VECTOR_TYPE
+#endif
+
 // vector.h (generic)
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #define SLIB_CONCAT(a,b)  a##b
 #define SLIB_CONCAT2(a,b) SLIB_CONCAT(a,b)
@@ -16,14 +21,12 @@
 
 #ifndef SLIB_VECTOR_ERROR
 #define SLIB_VECTOR_ERROR
-static int slib_vecerr = 0;
 #endif
 
 #ifdef SLIB_STRIP_PREFIXES
-# define SLIB_VECTOR SLIB_CONCAT2(vec_, SLIB_VECTOR_TYPE)
-# define vecerr slib_vecerr
+# define SLIB_VECTOR SLIB_CONCAT2(vec_, SLIB_VECTOR_NAME)
 #else
-# define SLIB_VECTOR SLIB_CONCAT2(slib_vec_, SLIB_VECTOR_TYPE)
+# define SLIB_VECTOR SLIB_CONCAT2(slib_vec_, SLIB_VECTOR_NAME)
 #endif
 
 #ifndef SLIB_VECTOR_INITIAL_CAP
@@ -33,7 +36,7 @@ static int slib_vecerr = 0;
 typedef struct {
     SLIB_VECTOR_TYPE* data;
     size_t size;
-    size_t cap;
+    size_t capacity;
 } SLIB_VECTOR;
 
 #define SLIB_VECTOR_RESERVE_M       SLIB_CONCAT2(SLIB_VECTOR, _reserve)
@@ -41,7 +44,7 @@ typedef struct {
 #define SLIB_VECTOR_APPEND_M        SLIB_CONCAT2(SLIB_VECTOR, _append)
 #define SLIB_VECTOR_APPEND_MANY_M   SLIB_CONCAT2(SLIB_VECTOR, _append_many)
 #define SLIB_VECTOR_APPEND_BUFFER_M SLIB_CONCAT2(SLIB_VECTOR, _append_buffer)
-#define SLIB_VECTOR_FREE_M          SLIB_CONCAT2(SLIB_VECTOR, _free)
+#define SLIB_VECTOR_CLEANUP_M          SLIB_CONCAT2(SLIB_VECTOR, _cleanup)
 
 #define SLIB_VECTOR_COMPARATOR SLIB_CONCAT2(SLIB_VECTOR, _comparator)
 
@@ -51,7 +54,7 @@ typedef int (*SLIB_VECTOR_COMPARATOR)(SLIB_VECTOR_TYPE*);
 #define SLIB_VECTOR_ITERATOR SLIB_CONCAT2(SLIB_VECTOR, _iterator)
 
 typedef struct {
-    const SLIB_VECTOR* const vec;
+    const SLIB_VECTOR* vec;
     SLIB_VECTOR_TYPE* next;
 } SLIB_VECTOR_ITERATOR;
 
@@ -60,28 +63,28 @@ typedef struct {
 #define SLIB_VECTOR_NEXT_M          SLIB_CONCAT2(SLIB_VECTOR, _next)
 
 // Ensure the vector has a capacity of this amount
-SLIB_API void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount);
+SLIB_API void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* vec, size_t amount);
 
 // Bumps the size of the vector and returns a pointer to the first slot (allows to emplace without copying)
-SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t amount);
+SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* vec, size_t amount);
 
 // Increases the size and copies the object to the vector
-SLIB_API void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem);
+SLIB_API void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* vec, const SLIB_VECTOR_TYPE elem);
 
 // Appends the content of another vector
-SLIB_API void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src);
+SLIB_API void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* dest, const SLIB_VECTOR* src);
 
 // Appends from an array of elements (uses memcpy)
-SLIB_API void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size);
+SLIB_API void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* dest, const SLIB_VECTOR_TYPE* src, const size_t size);
 
-// Frees the allocated memory
-SLIB_API void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec);
+// Frees the vector and return to pre init state
+SLIB_API void SLIB_VECTOR_CLEANUP_M(SLIB_VECTOR* vec);
 
 // Creates a basic iterator state
 SLIB_API SLIB_VECTOR_ITERATOR SLIB_VECTOR_ITERATOR_MAKE_M(const SLIB_VECTOR* vec);
 
 // Returns pointer of first occurence or null
-SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* const vec, SLIB_VECTOR_COMPARATOR comparator);
+SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* vec, SLIB_VECTOR_COMPARATOR comparator);
 
 // Returns pointer of next occurence or null
 SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SLIB_VECTOR_COMPARATOR comparator);
@@ -89,79 +92,67 @@ SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SL
 #ifdef SLIB_IMPLEMENTATION
 
 // Internals
-#define SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL SLIB_CONCAT2(SLIB_VECTOR, __increase_capacity_internal)
+#define SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY SLIB_CONCAT2(SLIB_VECTOR, __internal_prepare_capacity)
 
-static int SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL(SLIB_VECTOR* const vec, const size_t required) {
-    slib_vecerr = 0;
-    if (vec->cap < required) {
-        size_t new_cap = vec->cap ? vec->cap : SLIB_VECTOR_INITIAL_CAP;
-        do new_cap *= 2; while (new_cap < required);
+static void SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY(SLIB_VECTOR* vec, const size_t required) {
+    if (vec->capacity < required) {
+        size_t new_cap = vec->capacity ? vec->capacity : SLIB_VECTOR_INITIAL_CAP;
+        while (new_cap < required) new_cap *= 2;
+
         SLIB_VECTOR_TYPE* const new_data = realloc(vec->data, new_cap * sizeof(SLIB_VECTOR_TYPE));
-        if (!new_data) {
-            slib_vecerr = 1;
-            return 0;
-        }
-        vec->data = new_data;
-        vec->cap  = new_cap;
+        assert(new_data && "error: failed to allocate slib_vec");
 
+        vec->data = new_data;
+        vec->capacity  = new_cap;
     }
-    return 1;
 }
 
 // API
-SLIB_API void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* const vec, size_t amount) {
-    slib_vecerr = 0;
-    if (vec->cap < amount) {
+SLIB_API void SLIB_VECTOR_RESERVE_M(SLIB_VECTOR* vec, size_t amount) {
+    if (vec->capacity < amount) {
         SLIB_VECTOR_TYPE* const new_data = realloc(vec->data, amount * sizeof(SLIB_VECTOR_TYPE));
-        if (!new_data) {
-            slib_vecerr = 1;
-            return;
-        };
+        assert(new_data && "error: failed to allocate slib_vec");
+
         vec->data = new_data;
-        vec->cap  = amount;
+        vec->capacity  = amount;
     }
 }
 
-SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* const vec, size_t amount) {
+SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_GROW_M(SLIB_VECTOR* vec, size_t amount) {
     const size_t required = vec->size + amount;
-    if (SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL(vec, required)) {
-        SLIB_VECTOR_TYPE* const ret = vec->data + vec->size;
-        vec->size += amount;
-        return ret;
-    }
-    return NULL;
+    SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY(vec, required);
+    SLIB_VECTOR_TYPE* const ret = vec->data + vec->size;
+    vec->size += amount;
+    return ret;
 }
 
-SLIB_API void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* const vec, const SLIB_VECTOR_TYPE elem) {
-    if (SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL(vec, vec->size + 1)) {
-        vec->data[vec->size++] = elem;
-    }
+SLIB_API void SLIB_VECTOR_APPEND_M(SLIB_VECTOR* vec, const SLIB_VECTOR_TYPE elem) {
+    SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY(vec, vec->size + 1);
+    vec->data[vec->size++] = elem;
 }
 
-SLIB_API void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* const dst, const SLIB_VECTOR* const src) {
-    const size_t new_size = dst->size + src->size;
-    if (SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL(dst, new_size)) {
-        memcpy(dst->data + dst->size, src->data, src->size * sizeof(SLIB_VECTOR_TYPE));
-        dst->size = new_size;
-    }
+SLIB_API void SLIB_VECTOR_APPEND_MANY_M(SLIB_VECTOR* dest, const SLIB_VECTOR* src) {
+    const size_t new_size = dest->size + src->size;
+    SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY(dest, new_size);
+    memcpy(dest->data + dest->size, src->data, src->size * sizeof(SLIB_VECTOR_TYPE));
+    dest->size = new_size;
 }
 
-SLIB_API void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* const dst, const SLIB_VECTOR_TYPE* const src, const size_t size) {
-    const size_t new_size = dst->size + size;
-    if (SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL(dst, new_size)) {
-        memcpy(dst->data + dst->size, src, size * sizeof(SLIB_VECTOR_TYPE));
-        dst->size = new_size;
-    }
+SLIB_API void SLIB_VECTOR_APPEND_BUFFER_M(SLIB_VECTOR* dest, const SLIB_VECTOR_TYPE* src, const size_t size) {
+    const size_t new_size = dest->size + size;
+    SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY(dest, new_size);
+    memcpy(dest->data + dest->size, src, size * sizeof(SLIB_VECTOR_TYPE));
+    dest->size = new_size;
 }
 
-SLIB_API void SLIB_VECTOR_FREE_M(SLIB_VECTOR* const vec) {
+SLIB_API void SLIB_VECTOR_CLEANUP_M(SLIB_VECTOR* vec) {
     free(vec->data);
     vec->data = NULL;
     vec->size = 0;
-    vec->cap  = 0;
+    vec->capacity  = 0;
 }
 
-SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* const vec, SLIB_VECTOR_COMPARATOR comparator) {
+SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_FIRST_M(SLIB_VECTOR* vec, SLIB_VECTOR_COMPARATOR comparator) {
     const SLIB_VECTOR_TYPE* const end = vec->data + vec->size;
     for (SLIB_VECTOR_TYPE* it = vec->data; it < end; it++) {
         if (comparator(it)) {
@@ -189,7 +180,7 @@ SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SL
     return NULL;
 }
 
-#undef SLIB__VECTOR_PREPARE_CAPACITY_INTERNAL
+#undef SLIB__INTERNAL_VECTOR_PREPARE_CAPACITY
 
 #endif // SLIB_IMPLEMENTATION
 
@@ -202,4 +193,4 @@ SLIB_API SLIB_VECTOR_TYPE* SLIB_VECTOR_NEXT_M(SLIB_VECTOR_ITERATOR* vec_iter, SL
 #undef SLIB_VECTOR_APPEND_M
 #undef SLIB_VECTOR_APPEND_MANY_M
 #undef SLIB_VECTOR_APPEND_BUFFER_M
-#undef SLIB_VECTOR_FREE_M
+#undef SLIB_VECTOR_CLEANUP_M
